@@ -32,7 +32,21 @@ export const settingsService = {
 
       if (error) throw error;
       if (!data) return { data: defaultSettings, error: null };
-      return { data, error: null };
+      
+      const merged: SiteSettings = {
+        id: 'default',
+        name: data.name || defaultSettings.name,
+        email: data.email || defaultSettings.email,
+        whatsapp: data.whatsapp || defaultSettings.whatsapp,
+        linkedin: data.linkedin || defaultSettings.linkedin,
+        github: data.github || defaultSettings.github,
+        upi_id: data.upi_id || defaultSettings.upi_id,
+        upi_qr_url: data.upi_qr_url || null,
+        location: data.location || defaultSettings.location,
+        portfolio_url: data.portfolio_url || defaultSettings.portfolio_url,
+      };
+
+      return { data: merged, error: null };
     } catch (err: any) {
       console.error('Error fetching site settings:', err);
       return { data: localSettings, error: null };
