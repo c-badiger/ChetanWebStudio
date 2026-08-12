@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SITE_CONFIG } from '../../config/siteData';
 import type { ProjectItem } from '../../config/siteData';
+import { projectsService } from '../../services/projects';
 import { CaseStudyModal } from './CaseStudyModal';
 import { trackEvent } from '../../utils/analytics';
 import { BookOpen, ArrowUpRight } from 'lucide-react';
@@ -13,12 +14,41 @@ interface PortfolioSectionProps {
 export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ onOpenWizard }) => {
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
+  const [projectsList, setProjectsList] = useState<ProjectItem[]>(SITE_CONFIG.projects);
+
+  useEffect(() => {
+    projectsService.getPublishedProjects().then(({ data }) => {
+      if (data && data.length > 0) {
+        const mapped: ProjectItem[] = data.map((p) => ({
+          id: p.id,
+          title: p.title,
+          category: (p.project_type as any) || 'Business',
+          industry: p.industry || 'General',
+          description: p.description || '',
+          technologies: p.technologies || [],
+          objective: p.problem || 'High performance web application',
+          image: p.thumbnail_url || '/projects/saas.png',
+          caseStudy: {
+            overview: p.description || '',
+            clientType: p.industry || '',
+            problem: p.problem || '',
+            goals: p.features || [],
+            designApproach: p.solution || '',
+            devApproach: 'React 19, Vite, TypeScript, Supabase Backend',
+            features: p.features || [],
+            takeaways: 'Built to elevate brand perception and increase conversions.',
+          },
+        }));
+        setProjectsList(mapped);
+      }
+    });
+  }, []);
 
   const categories = ['All', 'Business', 'Landing Pages', 'UI/UX', 'Web Apps'];
 
   const filteredProjects = activeFilter === 'All'
-    ? SITE_CONFIG.projects
-    : SITE_CONFIG.projects.filter(p => p.category === activeFilter);
+    ? projectsList
+    : projectsList.filter(p => p.category === activeFilter);
 
   const handleFilterClick = (cat: string) => {
     setActiveFilter(cat);

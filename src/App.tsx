@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/layout/Navbar';
 import { HeroSection } from './components/hero/HeroSection';
 import { TrustSection } from './components/trust/TrustSection';
@@ -19,7 +20,16 @@ import { LegalModals } from './components/legal/LegalModals';
 import { StickyMobileCTA } from './components/common/StickyMobileCTA';
 import { NotFound } from './components/common/NotFound';
 
-export const App: React.FC = () => {
+// Admin Dashboard Components
+import { AdminLogin } from './components/admin/AdminLogin';
+import { AdminLayout } from './components/admin/AdminLayout';
+import { AdminDashboardOverview } from './components/admin/AdminDashboardOverview';
+import { AdminInquiries } from './components/admin/AdminInquiries';
+import { AdminProjects } from './components/admin/AdminProjects';
+import { AdminReviews } from './components/admin/AdminReviews';
+import { AdminSettings } from './components/admin/AdminSettings';
+
+const PublicPortfolioApp: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [selectedServiceTitle, setSelectedServiceTitle] = useState('');
   const [selectedPlanTitle, setSelectedPlanTitle] = useState('');
@@ -87,6 +97,32 @@ export const App: React.FC = () => {
       <StickyMobileCTA onOpenWizard={() => setIsWizardOpen(true)} />
 
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Website */}
+        <Route path="/" element={<PublicPortfolioApp />} />
+
+        {/* Admin Login */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* Protected Admin Dashboard Shell & Child Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboardOverview />} />
+          <Route path="inquiries" element={<AdminInquiries />} />
+          <Route path="projects" element={<AdminProjects />} />
+          <Route path="reviews" element={<AdminReviews />} />
+          <Route path="settings" element={<AdminSettings />} />
+        </Route>
+
+        {/* Fallback Catch-All */}
+        <Route path="*" element={<PublicPortfolioApp />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 

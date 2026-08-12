@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { sanitizeInput, isValidEmail } from '../../utils/helpers';
 import { trackEvent } from '../../utils/analytics';
+import { inquiriesService } from '../../services/inquiries';
+import { notificationService } from '../../services/notifications';
 import { X, ArrowRight, ArrowLeft, CheckCircle2, Send, Sparkles, AlertCircle } from 'lucide-react';
-
 
 interface ProjectBriefWizardProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export const ProjectBriefWizard: React.FC<ProjectBriefWizardProps> = ({
     setStep(prev => prev - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -99,11 +100,26 @@ export const ProjectBriefWizard: React.FC<ProjectBriefWizardProps> = ({
       params: { budget: formData.budget }
     });
 
-    // Simulate safe API dispatch
-    setTimeout(() => {
-      setLoading(false);
+    const inquiryInput = {
+      name: sanitizeInput(formData.name),
+      email: formData.email.trim(),
+      business_name: formData.whatsapp ? `WhatsApp: ${formData.whatsapp}` : '',
+      project_type: formData.projectType,
+      budget_range: formData.budget,
+      deadline: formData.timeline,
+      description: sanitizeInput(formData.description || 'Project Brief Qualification Submission'),
+    };
+
+    const { error } = await inquiriesService.createInquiry(inquiryInput);
+
+    setLoading(false);
+
+    if (error) {
+      setErrorMessage('Unable to submit project brief. Please try again.');
+    } else {
       setSubmitted(true);
-    }, 1500);
+      notificationService.notifyNewInquiry(inquiryInput);
+    }
   };
 
   return (

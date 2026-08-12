@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SITE_CONFIG } from '../../config/siteData';
+import { settingsService } from '../../services/settings';
 import { copyToClipboard } from '../../utils/helpers';
 import { trackEvent } from '../../utils/analytics';
 import { Copy, Check, ShieldCheck, Smartphone, Info } from 'lucide-react';
@@ -7,7 +8,15 @@ import { Copy, Check, ShieldCheck, Smartphone, Info } from 'lucide-react';
 
 export const PaymentSection: React.FC = () => {
   const [copied, setCopied] = useState(false);
-  const upiId = SITE_CONFIG.personal.upiId;
+  const [upiId, setUpiId] = useState(SITE_CONFIG.personal.upiId);
+
+  useEffect(() => {
+    settingsService.getSettings().then(({ data }) => {
+      if (data && data.upi_id) {
+        setUpiId(data.upi_id);
+      }
+    });
+  }, []);
 
   const handleCopyUpi = async () => {
     const success = await copyToClipboard(upiId);

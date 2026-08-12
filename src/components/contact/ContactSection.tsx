@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { SITE_CONFIG } from '../../config/siteData';
 import { isValidEmail, sanitizeInput } from '../../utils/helpers';
 import { trackEvent } from '../../utils/analytics';
+import { inquiriesService } from '../../services/inquiries';
+import { notificationService } from '../../services/notifications';
 import { Mail, MessageSquare, Send, CheckCircle2, AlertCircle, Sparkles, MapPin, Clock } from 'lucide-react';
 
 
@@ -30,7 +32,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
     honeypot: '' // Anti-spam protection
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -63,11 +65,27 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
       params: { budget: formState.budgetRange }
     });
 
-    // Simulate safe API dispatch
-    setTimeout(() => {
-      setLoading(false);
+    const inquiryInput = {
+      name: sanitizeInput(formState.name),
+      email: formState.email.trim(),
+      business_name: sanitizeInput(formState.businessName),
+      website_url: formState.websiteUrl.trim(),
+      project_type: formState.projectType,
+      budget_range: formState.budgetRange,
+      deadline: formState.deadline,
+      description: sanitizeInput(formState.description),
+    };
+
+    const { error } = await inquiriesService.createInquiry(inquiryInput);
+
+    setLoading(false);
+
+    if (error) {
+      setErrorMessage('Unable to submit inquiry. Please try again or reach out directly on WhatsApp.');
+    } else {
       setSubmitted(true);
-    }, 1200);
+      notificationService.notifyNewInquiry(inquiryInput);
+    }
   };
 
   const handleWhatsAppClick = () => {

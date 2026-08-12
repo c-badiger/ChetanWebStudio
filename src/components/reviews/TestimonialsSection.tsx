@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SITE_CONFIG } from '../../config/siteData';
+import type { TestimonialItem } from '../../config/siteData';
+import { reviewsService } from '../../services/reviews';
 import { Star, MessageSquareQuote, PlusCircle, CheckCircle, Send, X } from 'lucide-react';
 
 
 export const TestimonialsSection: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [reviewsList, setReviewsList] = useState<TestimonialItem[]>(SITE_CONFIG.testimonials);
   const [newReview, setNewReview] = useState({
     name: '',
     business: '',
@@ -14,7 +17,25 @@ export const TestimonialsSection: React.FC = () => {
     rating: 5
   });
 
-  const testimonials = SITE_CONFIG.testimonials;
+  useEffect(() => {
+    reviewsService.getPublishedReviews().then(({ data }) => {
+      if (data && data.length > 0) {
+        const mapped: TestimonialItem[] = data.map((r) => ({
+          id: r.id,
+          name: r.client_name,
+          business: r.business_name || '',
+          role: r.role || 'Client',
+          avatar: r.profile_image_url || undefined,
+          content: r.testimonial,
+          rating: r.rating,
+          date: new Date(r.created_at).toLocaleDateString(),
+        }));
+        setReviewsList(mapped);
+      }
+    });
+  }, []);
+
+  const testimonials = reviewsList;
 
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
