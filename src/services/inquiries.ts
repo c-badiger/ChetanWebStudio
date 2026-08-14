@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, supabaseAnon, isSupabaseConfigured } from '../lib/supabase';
 import type { Inquiry, CreateInquiryInput, InquiryStatus } from '../types/database';
 
 // In-memory fallback array for local testing when Supabase is unconfigured
@@ -29,7 +29,47 @@ export const inquiriesService = {
         return { data: newInquiry, error: null };
       }
 
-      const { data, error } = await supabase
+      // -----------------------------------------------------------------------
+      // DIAGNOSTIC: Inspect current auth state before INSERT.
+      // This will reveal if an admin JWT is leaking into this public request.
+      // -----------------------------------------------------------------------
+      if (import.meta.env.DEV) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeSession = sessionData?.session;
+        console.group('[inquiries.createInquiry] Auth Diagnostics');
+        console.log('Active session (primary client):', activeSession ? 'YES — session present' : 'No session');
+        if (activeSession) {
+          console.log('User ID:', activeSession.user?.id ?? 'n/a');
+          console.log('User email:', activeSession.user?.email ?? 'n/a');
+          console.log(
+            'JWT role claim:',
+            (() => {
+              try {
+                const payload = JSON.parse(atob(activeSession.access_token.split('.')[1]));
+                return payload.role ?? 'not set';
+              } catch {
+                return '(could not decode JWT)';
+              }
+            })()
+          );
+          console.warn(
+            '⚠️  Admin session detected on primary client. ' +
+            'The INSERT will use supabaseAnon (no session) to ensure `anon` role is used.'
+          );
+        }
+        console.log('Using supabaseAnon client for INSERT (persistSession: false)');
+        console.groupEnd();
+      }
+
+      // Use the anonymous client (no persisted JWT) so PostgREST always
+      // evaluates this INSERT under the `anon` role, satisfying the
+      // "Allow anonymous insert for inquiries" RLS policy.
+      //
+      // NOTE: No .select() here — we use Prefer: return=minimal so PostgREST
+      // runs a bare INSERT with no RETURNING clause. This avoids triggering a
+      // SELECT policy check (which anon doesn't have) and is sufficient because
+      // ContactSection.tsx only checks `error`, not the returned row.
+      const { error } = await supabaseAnon
         .from('inquiries')
         .insert([
           {
@@ -43,12 +83,21 @@ export const inquiriesService = {
             description: input.description,
             status: 'new',
           },
-        ])
-        .select()
-        .single();
+        ]);
 
-      if (error) throw error;
-      return { data, error: null };
+      if (error) {
+        // DIAGNOSTIC: Log the full Supabase error object for visibility
+        if (import.meta.env.DEV) {
+          console.error('[inquiries.createInquiry] INSERT error details:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          });
+        }
+        throw error;
+      }
+      return { data: null, error: null };
     } catch (err: any) {
       console.error('Error submitting inquiry:', err);
       return { data: null, error: err };
